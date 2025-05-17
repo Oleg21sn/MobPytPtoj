@@ -46,35 +46,46 @@ def load_words(lesson_name=None, show_learned=False):
 
 def save_word(english, ukrainian, lesson_name):
     try:
+        print(f"Спроба зберегти слово: {english} - {ukrainian} в урок {lesson_name}")
         existing_word = words_collection.find_one({
             'english': english,
             'lesson': lesson_name
         })
         if existing_word:
+            print(f"Слово {english} вже існує в уроці {lesson_name}")
             return False
-        words_collection.insert_one({
+        result = words_collection.insert_one({
             'english': english,
             'ukrainian': ukrainian,
             'learned': False,
             'lesson': lesson_name
         })
-        return True
+        print(f"Результат збереження слова: {result.acknowledged}")
+        return result.acknowledged
     except Exception as e:
         print(f"Помилка при збереженні слова: {e}")
+        import traceback
+        traceback.print_exc()
         return False
 
 def create_lesson(lesson_name, description=""):
     try:
+        print(f"Спроба створити урок: {lesson_name}")
         if not lessons_collection.find_one({"name": lesson_name}):
-            lessons_collection.insert_one({
+            result = lessons_collection.insert_one({
                 "name": lesson_name,
                 "description": description,
                 "created_at": datetime.now()
             })
-            return True
+            print(f"Результат створення уроку: {result.acknowledged}")
+            return result.acknowledged
+        else:
+            print(f"Урок з назвою {lesson_name} вже існує")
         return False
     except Exception as e:
         print(f"Помилка при створенні уроку: {e}")
+        import traceback
+        traceback.print_exc()
         return False
 
 def rename_lesson(old_name, new_name):

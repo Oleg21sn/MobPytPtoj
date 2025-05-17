@@ -107,10 +107,22 @@ class WordTrainerApp:
         
         # Отримуємо список уроків
         lessons = [lesson["name"] for lesson in get_lessons()]
+        
+        # Якщо список уроків порожній, створюємо урок "Головний"
         if not lessons:
-            messagebox.showwarning("Попередження", "Немає доступних уроків!")
-            self.create_main_menu()
-            return
+            print("UI: Список уроків порожній у select_mode. Створюємо урок 'Головний'")
+            result = create_lesson("Головний")
+            print(f"UI: Результат створення уроку 'Головний': {result}")
+            
+            if result:
+                lessons = [lesson["name"] for lesson in get_lessons()]
+            else:
+                messagebox.showerror("Помилка", "❌ Не вдалося створити урок! Можливо, є проблема з базою даних.")
+                self.create_main_menu()
+                return
+                
+            if not lessons:  # Якщо все ще немає уроків, використовуємо замінник
+                lessons = ["Головний"]
             
         self.lesson_var = tk.StringVar(value=lessons[0])
         
@@ -435,11 +447,20 @@ class WordTrainerApp:
                 font=("Arial", 14), bg="#f0f8ff", fg="#34495e").pack(pady=(0, 5))
         
         lessons = [lesson["name"] for lesson in get_lessons()]
+        
+        # Якщо список уроків порожній, створюємо урок "Головний"
+        if not lessons:
+            print("UI: Список уроків порожній. Створюємо урок 'Головний'")
+            create_lesson("Головний")
+            lessons = [lesson["name"] for lesson in get_lessons()]
+            if not lessons:  # Якщо все ще немає уроків, використовуємо замінник
+                lessons = ["Головний"]
+        
         self.lesson_var = tk.StringVar(value=lessons[0])
         
         lesson_dropdown = ttk.Combobox(main_container, textvariable=self.lesson_var, 
-                                     values=lessons, state="readonly", 
-                                     width=30, font=("Arial", 12))
+                                      values=lessons, state="readonly", 
+                                      width=30, font=("Arial", 12))
         lesson_dropdown.pack(pady=(0, 20))
         
         # Поле для англійського слова
@@ -472,13 +493,18 @@ class WordTrainerApp:
                 return
                 
             # Зберігаємо нове слово
-            save_word(english, ukrainian, lesson)
+            print(f"UI: Спроба зберегти слово: {english} - {ukrainian} в урок {lesson}")
+            result = save_word(english, ukrainian, lesson)
+            print(f"UI: Результат збереження слова: {result}")
             
-            # Очищаємо поля
-            english_entry.delete(0, tk.END)
-            ukrainian_entry.delete(0, tk.END)
-            
-            messagebox.showinfo("Успіх", "✅ Слово успішно додано!")
+            if result:
+                # Очищаємо поля
+                english_entry.delete(0, tk.END)
+                ukrainian_entry.delete(0, tk.END)
+                
+                messagebox.showinfo("Успіх", "✅ Слово успішно додано!")
+            else:
+                messagebox.showerror("Помилка", "❌ Не вдалося зберегти слово! Можливо, таке слово вже існує або є проблема з базою даних.")
             
         # Кнопка збереження
         save_btn = tk.Button(main_container, text="💾 Зберегти",
@@ -494,11 +520,18 @@ class WordTrainerApp:
         def create_new_lesson():
             lesson_name = simpledialog.askstring("Новий урок", "Введіть назву нового уроку:")
             if lesson_name:
-                create_lesson(lesson_name)
-                # Оновлюємо список уроків
-                lessons = ["Головний"] + [lesson["name"] for lesson in get_lessons()]
-                lesson_dropdown['values'] = lessons
-                self.lesson_var.set(lesson_name)
+                print(f"UI: Спроба створити урок: {lesson_name}")
+                result = create_lesson(lesson_name)
+                print(f"UI: Результат створення уроку: {result}")
+                
+                if result:
+                    # Оновлюємо список уроків
+                    lessons = [lesson["name"] for lesson in get_lessons()]
+                    lesson_dropdown['values'] = lessons
+                    self.lesson_var.set(lesson_name)
+                    messagebox.showinfo("Успіх", "✅ Урок успішно створено!")
+                else:
+                    messagebox.showerror("Помилка", "❌ Не вдалося створити урок! Можливо, урок з такою назвою вже існує або є проблема з базою даних.")
         
         new_lesson_btn = tk.Button(main_container, text="📚 Створити урок",
                                 font=("Arial", 12),
@@ -663,7 +696,10 @@ class WordTrainerApp:
             max_eng_len = max(len(word) for word in words.keys()) if words else 0
             fixed_width = max_eng_len + 10  # Додаємо відступ після англійського слова
             
-            for en_word, details in words.items():
+            # Сортуємо слова за англійським алфавітом
+            sorted_words = sorted(words.items(), key=lambda x: x[0].lower())
+            
+            for en_word, details in sorted_words:
                 ua_word = details["translation"]
                 words_list.insert(tk.END, f"❌ {en_word:<{fixed_width}}{ua_word}")
             if select_index is not None and select_index < words_list.size():
@@ -1025,7 +1061,11 @@ class WordTrainerApp:
             """Оновлює список вивчених слів."""
             words_list.delete(0, tk.END)
             words = load_words(lesson_name, show_learned=True)
-            for en_word, details in words.items():
+            
+            # Сортуємо слова за англійським алфавітом
+            sorted_words = sorted(words.items(), key=lambda x: x[0].lower())
+            
+            for en_word, details in sorted_words:
                 ua_word = details["translation"]
                 words_list.insert(tk.END, f"✅ {en_word} - {ua_word}")
             # Очищаємо фрейм з кнопками
